@@ -3,30 +3,31 @@ package utils
 import (
 	"fmt"
 	"log"
+
 	// "net/http"
-	"os"
 	"encoding/json"
 	"io"
+	"os"
 	"path/filepath"
 
 	// "github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"	
+	"github.com/joho/godotenv"
 )
 
 var EnvEntries map[string]string
 
 func GetEnvEntries() map[string]string {
-	EnvEntries = loadDotEnv()	
+	EnvEntries = loadDotEnv()
 	return EnvEntries
 }
 
-func GetRabbitMQURL() string{
-	return "amqp://" + EnvEntries["RABBITMQ_USER"] + ":" + EnvEntries["RABBITMQ_PWD"]  + "@" + EnvEntries["RABBITMQ_HOST"]
+func GetRabbitMQURL() string {
+	return "amqp://" + EnvEntries["RABBITMQ_USER"] + ":" + EnvEntries["RABBITMQ_PWD"] + "@" + EnvEntries["RABBITMQ_HOST"]
 }
 
 // fileName example: "config.json"
-func GetConfigFromJSON(fileDir string, fileName string) map[string]string{
-	if(len(fileDir) == 0){
+func GetConfigFromJSON(fileDir string, fileName string) map[string]string {
+	if len(fileDir) == 0 {
 		fileDir = getCurrentDir()
 	}
 	filePath := filepath.Join(fileDir, fileName)
@@ -35,14 +36,18 @@ func GetConfigFromJSON(fileDir string, fileName string) map[string]string{
 	file := openFile(filePath)
 	byteValue, _ := io.ReadAll(file)
 
-    var result map[string]string
-    json.Unmarshal([]byte(byteValue), &result)
-	defer file.Close()	
+	var result map[string]string
+	json.Unmarshal([]byte(byteValue), &result)
+	defer file.Close()
 	return result
 }
 
 func loadDotEnv() map[string]string {
-	err := godotenv.Load()
+	err := godotenv.Load("../.env") // .env file is at root dir of project
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -58,8 +63,7 @@ func loadDotEnv() map[string]string {
 	return keys
 }
 
-
-func getCurrentDir() string{
+func getCurrentDir() string {
 	path, err := os.Getwd()
 	if err != nil {
 		log.Println(err)
@@ -68,14 +72,13 @@ func getCurrentDir() string{
 	return path
 }
 
-
-func openFile(filePath string) *os.File{	
+func openFile(filePath string) *os.File {
 	// Open our jsonFile
 	jsonFile, err := os.Open(filePath)
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		fmt.Println(err)
-	}			
+	}
 	return jsonFile
 }
 
