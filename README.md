@@ -8,8 +8,7 @@
 - SocketIO module
 
 ## .env entries:
-- JWT_SECRET
-- AUTH_HEADER
+- cp env_template .env
 
 ## Relevant commands:
 - go run .
