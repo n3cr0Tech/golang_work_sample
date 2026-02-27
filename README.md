@@ -7,8 +7,12 @@
 - RabbitMQ module
 - SocketIO module
 
-## .env entries:
+## Setup / Quickstart
 - cp env_template .env
+- docker compose up -d
+- cd main
+- go get .
+- go run .
 
 ## Relevant commands:
 - go run .
