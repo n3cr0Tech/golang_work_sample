@@ -57,6 +57,7 @@ func loadDotEnv() map[string]string {
 	keys["RABBITMQ_PWD"] = os.Getenv("RABBITMQ_PWD")
 	keys["RABBITMQ_HOST"] = os.Getenv("RABBITMQ_HOST")
 	keys["MONGO_URL"] = os.Getenv("MONGO_URL")
+	keys["MONGO_USERS_DB"] = os.Getenv("MONGO_USERS_DB")
 	keys["DB_NAME"] = os.Getenv("DB_NAME")
 	keys["MONGO_USER"] = os.Getenv("MONGO_USER")
 	keys["MONGO_PWD"] = os.Getenv("MONGO_PWD")

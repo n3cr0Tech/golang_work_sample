@@ -24,9 +24,9 @@ func main() {
 	readConfigFile()
 
 	router = gin.Default()
-	mockData.CreateMockUsers()
+	// mockData.CreateMockUsers()
 	utils.GetEnvEntries()
-	USERS_COLLECTIONS_NAME := "users"
+	USERS_COLLECTIONS_NAME := utils.EnvEntries["MONGO_USERS_DB"]
 	mongodb.Init(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"], USERS_COLLECTIONS_NAME)
 	collectionsName := "test"
 	testRecordName := "player-machine-4-lab"
