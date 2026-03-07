@@ -24,13 +24,5 @@
     - creates a go.sum file
 - go get LIBRARY_NAME
     - installs a library/package
-- go mod init example.com/PACKAGE-NAME
+- go mod init golang_work_sample/internal/PACKAGE-NAME
     - create a new module
-
-## Create a new module:
-- mkdir new-folder-name
-- cd new-folder-name
-- go mod init util-module  (typically same name as folder)
-- then in the folder that will use your new module (eg 'main'), execute commands:
-    - go mod edit -replace example.com/util-module=../util-module
-    - go mod tidy
