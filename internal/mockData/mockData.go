@@ -7,7 +7,6 @@ import (
 	types "golang_work_sample/internal/types"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 	"rsc.io/quote"
 )
 
@@ -57,33 +56,33 @@ func GetAlbum(c *gin.Context) {
 }
 
 // ----- Auth Placeholders -----
-var mockUsers []types.User
+// var mockUsers []types.User
 
-func CreateMockUsers() {
-	user1 := types.User{UUID: "0", Username: "mickeyMouse"}
-	user2 := types.User{UUID: "1", Username: "foo-user"}
+// func CreateMockUsers() {
+// 	user1 := types.User{UUID: "0", Username: "mickeyMouse"}
+// 	user2 := types.User{UUID: "1", Username: "foo-user"}
 
-	Mock_Pwd := "password123"
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(Mock_Pwd), bcrypt.DefaultCost)
+// 	Mock_Pwd := "password123"
+// 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(Mock_Pwd), bcrypt.DefaultCost)
 
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	user1.Password = string(passwordHash)
-	user2.Password = string(passwordHash)
-	mockUsers = append(mockUsers, user1, user2)
-}
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		return
+// 	}
+// 	user1.Password = string(passwordHash)
+// 	user2.Password = string(passwordHash)
+// 	mockUsers = append(mockUsers, user1, user2)
+// }
 
-func GetUserByUsername(username string) (*types.User, string) {
-	for _, u := range mockUsers {
-		if username == u.Username {
-			return &u, ""
-		}
-	}
-	errMsg := fmt.Sprintf("No record found for user: %v", username)
-	return nil, errMsg
-}
+// func GetUserByUsername(username string) (*types.User, string) {
+// 	for _, u := range mockUsers {
+// 		if username == u.Username {
+// 			return &u, ""
+// 		}
+// 	}
+// 	errMsg := fmt.Sprintf("No record found for user: %v", username)
+// 	return nil, errMsg
+// }
 
 // postAlbums adds an album from JSON received in the request body.
 func PostGreeting(c *gin.Context) {

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	mockData "golang_work_sample/internal/mockData"
+	"golang_work_sample/internal/mongodb"
 	utils "golang_work_sample/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -54,10 +54,10 @@ func AuthChecker(c *gin.Context) {
 		return
 	}
 
-	// check if user has record in DB
-	// TODO: attach a DB to check actual record
-	userRecord, userErr := mockData.GetUserByUsername(claims["username"].(string))
-	if len(userErr) > 0 || userRecord == nil {
+	userCollectionsName := utils.EnvEntries["MONGO_USERS_DB"]
+	recordIndex := map[string]string{"username": claims["username"].(string)}
+	userRecord, userErr := mongodb.GetRecord(userCollectionsName, recordIndex)
+	if userErr != nil || userRecord == nil {
 		errorMsg := fmt.Sprintf("No User record found for: %v", claims["username"])
 		c.JSON(http.StatusUnauthorized, gin.H{"error": errorMsg})
 		c.AbortWithStatus(http.StatusUnauthorized)
