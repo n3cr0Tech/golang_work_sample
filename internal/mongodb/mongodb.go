@@ -15,10 +15,19 @@ import (
 var mongoClient *mongo.Client
 var db *mongo.Database
 
-func Init(url string, dbName string, userCollections string) {
+func Init(url string, user string, pwd string, dbName string, userCollections string) {
 	var err error
+	fullURL := url
+	if user != "" && pwd != "" {
+		// Insert credentials into URI if they are not already there
+		// This is a simple insertion assuming the URI starts with mongodb://
+		if len(url) > 10 && url[:10] == "mongodb://" {
+			fullURL = fmt.Sprintf("mongodb://%s:%s@%s", user, pwd, url[10:])
+		}
+	}
+
 	mongoClient, err = mongo.Connect(context.TODO(), options.Client().
-		ApplyURI(url))
+		ApplyURI(fullURL))
 	if err != nil {
 		panic(err)
 	}
@@ -78,7 +87,6 @@ func UserExists(collectionName string, uniqueKey interface{}, data interface{}) 
 	res := true
 	if recErr != nil {
 		panic(recErr)
-		res = false
 	}
 	if recordAlreadyExists == nil {
 		res = false
@@ -105,9 +113,8 @@ func UpsertRecord(collectionName string, uniqueKey interface{}, data interface{}
 	res, err := coll.UpdateOne(context.TODO(), filter, update, &opts)
 	if err != nil {
 		panic(err)
-		upsertIsSuccess = false
 	}
-	fmt.Printf("Upserted Succesfully: %s\n", res)
+	fmt.Printf("Upserted Succesfully: %+v\n", res)
 	return upsertIsSuccess
 }
 

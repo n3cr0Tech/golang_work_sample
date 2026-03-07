@@ -27,7 +27,7 @@ func main() {
 	mockData.CreateMockUsers()
 	utils.GetEnvEntries()
 	USERS_COLLECTIONS_NAME := "users"
-	mongodb.Init(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["DB_NAME"], USERS_COLLECTIONS_NAME)
+	mongodb.Init(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"], USERS_COLLECTIONS_NAME)
 	collectionsName := "test"
 	testRecordName := "player-machine-4-lab"
 	testCreateDBData(collectionsName, testRecordName) //DEBUG

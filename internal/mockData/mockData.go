@@ -104,12 +104,3 @@ func generateGreeting(name string) string {
 	msg := fmt.Sprintf("Hello %v, here's a a quote: %v", name, quote.Glass())
 	return msg
 }
-
-// ---------------
-
-/*
---- SAMPLE REQUEST ---
-curl http://localhost:8080/albums
-
-curl http://localhost:8080/albums/2
-*/
