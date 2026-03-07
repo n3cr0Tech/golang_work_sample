@@ -1,5 +1,6 @@
 ## Written as base code for running server with numerous concurrent players with realtime interactions
 
+
 ## Features
 - Player registration/login
 - JWT auth tokens
@@ -26,3 +27,7 @@
     - installs a library/package
 - go mod init golang_work_sample/internal/PACKAGE-NAME
     - create a new module
+
+
+## Connecting to MongoDB
+- mongodb://USER:PWD@localhost:27017/admin

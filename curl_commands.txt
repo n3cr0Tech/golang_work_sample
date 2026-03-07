@@ -1,0 +1,14 @@
+# Register a new user
+curl -X POST http://localhost:8000/register \
+     -H "Content-Type: application/json" \
+     -d '{"username": "testuser", "password": "testpassword"}'
+
+# Login to get a token
+curl -X POST http://localhost:8000/login \
+     -H "Content-Type: application/json" \
+     -d '{"username": "testuser", "password": "testpassword"}'
+
+# Get albums (requires token from login)
+# Replace <YOUR_TOKEN_HERE> with the token received from the /login response
+curl -X GET http://localhost:8000/albums \
+     -H "<AUTH_HEADER>: <YOUR_TOKEN_HERE>"
