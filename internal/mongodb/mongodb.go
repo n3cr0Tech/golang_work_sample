@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	types "golang_work_sample/internal/types"
+	"golang_work_sample/internal/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -43,6 +44,7 @@ func Init(url string, user string, pwd string, dbName string, userCollections st
 }
 
 func GetRecord(collectionName string, v interface{}) (*types.User, error) {
+	fmt.Printf("-- Getting record: %v from collection: %s\n", v, collectionName)
 	data, _ := bson.Marshal(v)
 	coll := db.Collection(collectionName)
 	var result bson.M
@@ -75,23 +77,40 @@ func CreateCollections(collectionsName string) {
 
 func EnsureRegisterUser(collectionName string, uniqueKey interface{}, data interface{}) bool {
 	res := true
-	if UserExists(collectionName, uniqueKey, data) {
+	// Extract username from uniqueKey if possible, or expect uniqueKey to be the filter
+	// For now, let's assume we can get the username from the uniqueKey map or similar
+	// But the request is to refactor UserExists to take a username string.
+	// Let's look at how EnsureRegisterUser is called.
+
+	// In auth.go: filter := map[string]interface{}{"username": username}
+	// return mongoDB.EnsureRegisterUser("users", filter, newUser)
+
+	username := ""
+	if m, ok := uniqueKey.(map[string]interface{}); ok {
+		if u, ok := m["username"].(string); ok {
+			username = u
+		}
+	} else if m, ok := uniqueKey.(map[string]string); ok {
+		if u, ok := m["username"]; ok {
+			username = u
+		}
+	}
+
+	if UserExists(username) {
 		return false
 	}
 	res = UpsertRecord(collectionName, uniqueKey, data)
 	return res
 }
 
-func UserExists(collectionName string, uniqueKey interface{}, data interface{}) bool {
-	recordAlreadyExists, recErr := GetRecord(collectionName, uniqueKey)
+func UserExists(username string) bool {
+	recordIndex := map[string]string{"username": username}
+	userRecord, _ := GetRecord(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
 	res := true
-	if recErr != nil {
-		panic(recErr)
-	}
-	if recordAlreadyExists == nil {
+	if userRecord == nil {
 		res = false
 	} else {
-		fmt.Println("Record already exists for ", uniqueKey)
+		fmt.Println("Record already exists for ", username)
 	}
 	return res
 }
