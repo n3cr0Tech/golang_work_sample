@@ -108,7 +108,7 @@ func testGetDBData(mongoClient *mongodb.MongoClient, collections string, recordN
 	data := map[string]interface{}{
 		"name": recordName,
 	}
-	mongoClient.GetRecord(collections, data)
+	mongoClient.FindOne(collections, data)
 }
 
 func testCreateDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {

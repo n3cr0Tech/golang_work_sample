@@ -56,7 +56,7 @@ func (h *MiddlewareHandler) AuthChecker(c *gin.Context) {
 
 	userCollectionsName := utils.EnvEntries["MONGO_USERS_DB"]
 	recordIndex := map[string]string{"username": claims["username"].(string)}
-	userRecord, userErr := h.mongoDB.GetRecord(userCollectionsName, recordIndex)
+	userRecord, userErr := h.mongoDB.FindOne(userCollectionsName, recordIndex)
 	if userErr != nil || userRecord == nil {
 		errorMsg := fmt.Sprintf("No User record found for: %v", claims["username"])
 		c.JSON(http.StatusUnauthorized, gin.H{"error": errorMsg})

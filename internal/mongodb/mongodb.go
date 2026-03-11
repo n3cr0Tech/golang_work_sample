@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	types "golang_work_sample/internal/types"
+	"golang_work_sample/internal/types"
 	"golang_work_sample/internal/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -46,15 +46,27 @@ func NewClient(url string, user string, pwd string, dbName string) (*MongoClient
 	}, nil
 }
 
-func (m *MongoClient) GetRecord(collectionName string, v interface{}) (*types.User, error) {
-	fmt.Printf("-- Getting record: %v from collection: %s\n", v, collectionName)
-	data, _ := bson.Marshal(v)
+func (m *MongoClient) FindUser(collectionName string, filter interface{}) (*types.User, error) {
+	var userRecord types.User
+	jsonRecord, err := m.FindOne(collectionName, filter)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(jsonRecord, &userRecord); err != nil {
+		return nil, err
+	}
+	return &userRecord, nil
+}
+
+func (m *MongoClient) FindOne(collectionName string, filter interface{}) ([]byte, error) {
+	fmt.Printf("-- Getting record: %v from collection: %s\n", filter, collectionName)
+	data, _ := bson.Marshal(filter)
 	coll := m.db.Collection(collectionName)
 	var result bson.M
 	err := coll.FindOne(context.TODO(), data).
 		Decode(&result)
 	if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the name %s\n", v)
+		fmt.Printf("No document was found with the name %s\n", filter)
 		return nil, err
 	}
 	jsonData, err := json.MarshalIndent(result, "", "    ")
@@ -62,11 +74,7 @@ func (m *MongoClient) GetRecord(collectionName string, v interface{}) (*types.Us
 		return nil, err
 	}
 
-	var userRecord types.User
-	if err := json.Unmarshal(jsonData, &userRecord); err != nil {
-		return nil, err
-	}
-	return &userRecord, nil
+	return jsonData, nil
 }
 
 func (m *MongoClient) CreateCollections(collectionsName string) {
@@ -108,7 +116,7 @@ func (m *MongoClient) EnsureRegisterUser(collectionName string, uniqueKey interf
 
 func (m *MongoClient) UserExists(username string) bool {
 	recordIndex := map[string]string{"username": username}
-	userRecord, _ := m.GetRecord(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
+	userRecord, _ := m.FindOne(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
 	res := true
 	if userRecord == nil {
 		res = false

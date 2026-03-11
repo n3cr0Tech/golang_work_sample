@@ -58,7 +58,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	recordIndex := map[string]string{"username": req.Username}
-	userRecord, _recordErr := h.mongoDB.GetRecord("users", recordIndex)
+	userRecord, _recordErr := h.mongoDB.FindUser("users", recordIndex)
 	if _recordErr != nil {
 		fmt.Println("INSIDE - record error clause")
 		c.IndentedJSON(http.StatusOK, gin.H{"message": "Failed to find record for " + req.Username})
