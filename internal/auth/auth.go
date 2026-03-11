@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -41,7 +42,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	res := h.createNewUserRecordOnDB(req.Username, hashedPwd)
+	res := h.createNewUserRecordOnDB(c.Request.Context(), req.Username, hashedPwd)
 	if res {
 		c.IndentedJSON(http.StatusOK, gin.H{"message": "Created record for user: " + req.Username})
 	} else {
@@ -58,7 +59,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	recordIndex := map[string]string{"username": req.Username}
-	userRecord, _recordErr := h.mongoDB.FindUser("users", recordIndex)
+	userRecord, _recordErr := h.mongoDB.FindUser(c.Request.Context(), "users", recordIndex)
 	if _recordErr != nil {
 		fmt.Println("INSIDE - record error clause")
 		c.IndentedJSON(http.StatusOK, gin.H{"message": "Failed to find record for " + req.Username})
@@ -80,7 +81,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 }
 
-func (h *AuthHandler) createNewUserRecordOnDB(username string, hashedPwd string) bool {
+func (h *AuthHandler) createNewUserRecordOnDB(ctx context.Context, username string, hashedPwd string) bool {
 	id := uuid.New()
 	newUser := map[string]interface{}{
 		"UUID":      id.String(),
@@ -90,7 +91,7 @@ func (h *AuthHandler) createNewUserRecordOnDB(username string, hashedPwd string)
 	}
 
 	filter := map[string]interface{}{"username": username}
-	return h.mongoDB.EnsureRegisterUser(utils.EnvEntries["MONGO_USERS_DB"], filter, newUser)
+	return h.mongoDB.EnsureRegisterUser(ctx, utils.EnvEntries["MONGO_USERS_DB"], filter, newUser)
 }
 
 func hashPassword(password string) (string, error) {

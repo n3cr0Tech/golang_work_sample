@@ -18,7 +18,7 @@ type MongoClient struct {
 	db     *mongo.Database
 }
 
-func NewClient(url string, user string, pwd string, dbName string) (*MongoClient, error) {
+func NewClient(ctx context.Context, url string, user string, pwd string, dbName string) (*MongoClient, error) {
 	var err error
 	fullURL := url
 	if user != "" && pwd != "" {
@@ -29,14 +29,14 @@ func NewClient(url string, user string, pwd string, dbName string) (*MongoClient
 		}
 	}
 
-	mongoClient, err := mongo.Connect(context.TODO(), options.Client().
+	mongoClient, err := mongo.Connect(ctx, options.Client().
 		ApplyURI(fullURL))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to MongoDB: %w", err)
 	}
 
 	// defer func() {
-	// 	if err := client.Disconnect(context.TODO()); err != nil {
+	// 	if err := client.Disconnect(ctx); err != nil {
 	// 		panic(err)
 	// 	}
 	// }()
@@ -46,9 +46,9 @@ func NewClient(url string, user string, pwd string, dbName string) (*MongoClient
 	}, nil
 }
 
-func (m *MongoClient) FindUser(collectionName string, filter interface{}) (*types.User, error) {
+func (m *MongoClient) FindUser(ctx context.Context, collectionName string, filter interface{}) (*types.User, error) {
 	var userRecord types.User
-	jsonRecord, err := m.FindOne(collectionName, filter)
+	jsonRecord, err := m.FindOne(ctx, collectionName, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -58,12 +58,12 @@ func (m *MongoClient) FindUser(collectionName string, filter interface{}) (*type
 	return &userRecord, nil
 }
 
-func (m *MongoClient) FindOne(collectionName string, filter interface{}) ([]byte, error) {
+func (m *MongoClient) FindOne(ctx context.Context, collectionName string, filter interface{}) ([]byte, error) {
 	fmt.Printf("-- Getting record: %v from collection: %s\n", filter, collectionName)
 	data, _ := bson.Marshal(filter)
 	coll := m.db.Collection(collectionName)
 	var result bson.M
-	err := coll.FindOne(context.TODO(), data).
+	err := coll.FindOne(ctx, data).
 		Decode(&result)
 	if err == mongo.ErrNoDocuments {
 		fmt.Printf("No document was found with the name %s\n", filter)
@@ -77,17 +77,17 @@ func (m *MongoClient) FindOne(collectionName string, filter interface{}) ([]byte
 	return jsonData, nil
 }
 
-func (m *MongoClient) CreateCollections(collectionsName string) {
+func (m *MongoClient) CreateCollections(ctx context.Context, collectionsName string) error {
 	command := bson.D{{Key: "create", Value: collectionsName}}
 	var result bson.M
-	if err := m.db.RunCommand(context.TODO(), command).Decode(&result); err != nil {
-		panic(err)
+	if err := m.db.RunCommand(ctx, command).Decode(&result); err != nil {
+		return fmt.Errorf("failed to create collection %s: %w", collectionsName, err)
 	}
 	fmt.Println("Created collections: ", collectionsName)
+	return nil
 }
 
-func (m *MongoClient) EnsureRegisterUser(collectionName string, uniqueKey interface{}, data interface{}) bool {
-	res := true
+func (m *MongoClient) EnsureRegisterUser(ctx context.Context, collectionName string, uniqueKey interface{}, data interface{}) bool {
 	// Extract username from uniqueKey if possible, or expect uniqueKey to be the filter
 	// For now, let's assume we can get the username from the uniqueKey map or similar
 	// But the request is to refactor UserExists to take a username string.
@@ -108,17 +108,20 @@ func (m *MongoClient) EnsureRegisterUser(collectionName string, uniqueKey interf
 	}
 
 	filter := map[string]string{"username": username}
-	if userRecord, _ := m.FindUser(collectionName, filter); userRecord != nil {
+	if userRecord, _ := m.FindUser(ctx, collectionName, filter); userRecord != nil {
 		log.Println("Error: User already exists")
 		return false
 	}
-	res = m.UpsertRecord(collectionName, uniqueKey, data)
-	return res
+	updateResult, err := m.UpsertRecord(ctx, collectionName, uniqueKey, data)
+	if err != nil {
+		log.Printf("Error upserting record: %v", err)
+		return false
+	}
+	return updateResult != nil
 }
 
-func (m *MongoClient) UpsertRecord(collectionName string, uniqueKey interface{}, data interface{}) bool {
+func (m *MongoClient) UpsertRecord(ctx context.Context, collectionName string, uniqueKey interface{}, data interface{}) (*mongo.UpdateResult, error) {
 	bsonData := convertInterfaceToBsonMap(data)
-	upsertIsSuccess := true
 
 	coll := m.db.Collection(collectionName)
 
@@ -130,22 +133,23 @@ func (m *MongoClient) UpsertRecord(collectionName string, uniqueKey interface{},
 	opts := options.UpdateOptions{
 		Upsert: &upsert,
 	}
-	res, err := coll.UpdateOne(context.TODO(), filter, update, &opts)
+	res, err := coll.UpdateOne(ctx, filter, update, &opts)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to upsert record in %s: %w", collectionName, err)
 	}
 	fmt.Printf("Upserted Succesfully: %+v\n", res)
-	return upsertIsSuccess
+	return res, nil
 }
 
-func (m *MongoClient) DeleteRecord(collectionName string, indexKey string, indexVal interface{}) {
+func (m *MongoClient) DeleteRecord(ctx context.Context, collectionName string, indexKey string, indexVal interface{}) error {
 	filter := bson.D{{Key: indexKey, Value: bson.D{{Key: "$eq", Value: indexVal}}}}
 	coll := m.db.Collection(collectionName)
-	_, err := coll.DeleteOne(context.TODO(), filter, nil)
+	_, err := coll.DeleteOne(ctx, filter, nil)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to delete record from %s: %w", collectionName, err)
 	}
 	fmt.Println("Successfully deleted record: ", indexKey, ": ", indexVal)
+	return nil
 }
 
 func convertInterfaceToBsonMap(goMap interface{}) bson.M {

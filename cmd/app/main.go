@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -29,11 +30,13 @@ func main() {
 	USERS_COLLECTIONS_NAME := utils.EnvEntries["MONGO_USERS_DB"]
 
 	// Init MongoDB
-	mongoClient, err := mongodb.NewClient(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"])
+	mongoClient, err := mongodb.NewClient(context.Background(), utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"])
 	if err != nil {
 		log.Fatal(err)
 	}
-	mongoClient.CreateCollections(USERS_COLLECTIONS_NAME)
+	if err := mongoClient.CreateCollections(context.Background(), USERS_COLLECTIONS_NAME); err != nil {
+		log.Printf("Warning: failed to ensure collections: %v", err)
+	}
 
 	// Testing DB
 	collectionsName := "test"
@@ -108,21 +111,27 @@ func testGetDBData(mongoClient *mongodb.MongoClient, collections string, recordN
 	data := map[string]interface{}{
 		"name": recordName,
 	}
-	mongoClient.FindOne(collections, data)
+	mongoClient.FindOne(context.Background(), collections, data)
 }
 
 func testCreateDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {
-	mongoClient.CreateCollections(collections)
+	if err := mongoClient.CreateCollections(context.Background(), collections); err != nil {
+		log.Printf("Test error: %v", err)
+	}
 	filter := map[string]interface{}{"uuid": "abc-0"}
 	data := map[string]any{
 		"name":   recordName,
 		"points": 123,
 	}
-	mongoClient.UpsertRecord(collections, filter, data)
+	if _, err := mongoClient.UpsertRecord(context.Background(), collections, filter, data); err != nil {
+		log.Printf("Test error: %v", err)
+	}
 }
 
 func testDeleteDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {
-	mongoClient.DeleteRecord(collections, "name", recordName)
+	if err := mongoClient.DeleteRecord(context.Background(), collections, "name", recordName); err != nil {
+		log.Printf("Test error: %v", err)
+	}
 }
 
 func readConfigFile() {
