@@ -90,7 +90,7 @@ func (h *AuthHandler) createNewUserRecordOnDB(username string, hashedPwd string)
 	}
 
 	filter := map[string]interface{}{"username": username}
-	return h.mongoDB.EnsureRegisterUser("users", filter, newUser)
+	return h.mongoDB.EnsureRegisterUser(utils.EnvEntries["MONGO_USERS_DB"], filter, newUser)
 }
 
 func hashPassword(password string) (string, error) {

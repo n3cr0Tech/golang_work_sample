@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"golang_work_sample/internal/types"
-	"golang_work_sample/internal/utils"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -107,22 +107,12 @@ func (m *MongoClient) EnsureRegisterUser(collectionName string, uniqueKey interf
 		}
 	}
 
-	if m.UserExists(username) {
+	filter := map[string]string{"username": username}
+	if userRecord, _ := m.FindUser(collectionName, filter); userRecord != nil {
+		log.Println("Error: User already exists")
 		return false
 	}
 	res = m.UpsertRecord(collectionName, uniqueKey, data)
-	return res
-}
-
-func (m *MongoClient) UserExists(username string) bool {
-	recordIndex := map[string]string{"username": username}
-	userRecord, _ := m.FindOne(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
-	res := true
-	if userRecord == nil {
-		res = false
-	} else {
-		fmt.Println("Record already exists for ", username)
-	}
 	return res
 }
 
