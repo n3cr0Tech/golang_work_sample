@@ -13,10 +13,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var mongoClient *mongo.Client
-var db *mongo.Database
+type MongoClient struct {
+	client *mongo.Client
+	db     *mongo.Database
+}
 
-func Init(url string, user string, pwd string, dbName string, userCollections string) {
+func NewClient(url string, user string, pwd string, dbName string) (*MongoClient, error) {
 	var err error
 	fullURL := url
 	if user != "" && pwd != "" {
@@ -27,26 +29,27 @@ func Init(url string, user string, pwd string, dbName string, userCollections st
 		}
 	}
 
-	mongoClient, err = mongo.Connect(context.TODO(), options.Client().
+	mongoClient, err := mongo.Connect(context.TODO(), options.Client().
 		ApplyURI(fullURL))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("Failed to connect to MongoDB: %w", err)
 	}
-	db = mongoClient.Database(dbName)
 
-	CreateCollections(userCollections)
 	// defer func() {
 	// 	if err := client.Disconnect(context.TODO()); err != nil {
 	// 		panic(err)
 	// 	}
 	// }()
-
+	return &MongoClient{
+		client: mongoClient,
+		db:     mongoClient.Database(dbName),
+	}, nil
 }
 
-func GetRecord(collectionName string, v interface{}) (*types.User, error) {
+func (m *MongoClient) GetRecord(collectionName string, v interface{}) (*types.User, error) {
 	fmt.Printf("-- Getting record: %v from collection: %s\n", v, collectionName)
 	data, _ := bson.Marshal(v)
-	coll := db.Collection(collectionName)
+	coll := m.db.Collection(collectionName)
 	var result bson.M
 	err := coll.FindOne(context.TODO(), data).
 		Decode(&result)
@@ -66,16 +69,16 @@ func GetRecord(collectionName string, v interface{}) (*types.User, error) {
 	return &userRecord, nil
 }
 
-func CreateCollections(collectionsName string) {
-	command := bson.D{{"create", collectionsName}}
+func (m *MongoClient) CreateCollections(collectionsName string) {
+	command := bson.D{{Key: "create", Value: collectionsName}}
 	var result bson.M
-	if err := db.RunCommand(context.TODO(), command).Decode(&result); err != nil {
+	if err := m.db.RunCommand(context.TODO(), command).Decode(&result); err != nil {
 		panic(err)
 	}
 	fmt.Println("Created collections: ", collectionsName)
 }
 
-func EnsureRegisterUser(collectionName string, uniqueKey interface{}, data interface{}) bool {
+func (m *MongoClient) EnsureRegisterUser(collectionName string, uniqueKey interface{}, data interface{}) bool {
 	res := true
 	// Extract username from uniqueKey if possible, or expect uniqueKey to be the filter
 	// For now, let's assume we can get the username from the uniqueKey map or similar
@@ -96,16 +99,16 @@ func EnsureRegisterUser(collectionName string, uniqueKey interface{}, data inter
 		}
 	}
 
-	if UserExists(username) {
+	if m.UserExists(username) {
 		return false
 	}
-	res = UpsertRecord(collectionName, uniqueKey, data)
+	res = m.UpsertRecord(collectionName, uniqueKey, data)
 	return res
 }
 
-func UserExists(username string) bool {
+func (m *MongoClient) UserExists(username string) bool {
 	recordIndex := map[string]string{"username": username}
-	userRecord, _ := GetRecord(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
+	userRecord, _ := m.GetRecord(utils.EnvEntries["MONGO_USERS_DB"], recordIndex)
 	res := true
 	if userRecord == nil {
 		res = false
@@ -115,11 +118,11 @@ func UserExists(username string) bool {
 	return res
 }
 
-func UpsertRecord(collectionName string, uniqueKey interface{}, data interface{}) bool {
+func (m *MongoClient) UpsertRecord(collectionName string, uniqueKey interface{}, data interface{}) bool {
 	bsonData := convertInterfaceToBsonMap(data)
 	upsertIsSuccess := true
 
-	coll := db.Collection(collectionName)
+	coll := m.db.Collection(collectionName)
 
 	update := bson.M{
 		"$set": bsonData,
@@ -137,9 +140,9 @@ func UpsertRecord(collectionName string, uniqueKey interface{}, data interface{}
 	return upsertIsSuccess
 }
 
-func DeleteRecord(collectionName string, indexKey string, indexVal interface{}) {
-	filter := bson.D{{indexKey, bson.D{{"$eq", indexVal}}}}
-	coll := db.Collection(collectionName)
+func (m *MongoClient) DeleteRecord(collectionName string, indexKey string, indexVal interface{}) {
+	filter := bson.D{{Key: indexKey, Value: bson.D{{Key: "$eq", Value: indexVal}}}}
+	coll := m.db.Collection(collectionName)
 	_, err := coll.DeleteOne(context.TODO(), filter, nil)
 	if err != nil {
 		panic(err)

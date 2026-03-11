@@ -12,7 +12,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func AuthChecker(c *gin.Context) {
+type MiddlewareHandler struct {
+	mongoDB *mongodb.MongoClient
+}
+
+func NewMiddlewareHandler(db *mongodb.MongoClient) *MiddlewareHandler {
+	return &MiddlewareHandler{mongoDB: db}
+}
+
+func (h *MiddlewareHandler) AuthChecker(c *gin.Context) {
 	authHeader := c.GetHeader(utils.EnvEntries["AUTH_HEADER"])
 
 	// check auth header
@@ -21,14 +29,6 @@ func AuthChecker(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-
-	// // check auth token format
-	// tokenized := strings.Split(authHeader, " ")
-	// if tokenized[0] != "Bearer" || len(tokenized) != 2{
-	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid auth token format"})
-	// 	c.AbortWithStatus(http.StatusUnauthorized)
-	// 	return
-	// }
 
 	// check token after jwt parsing
 	tokenStr := authHeader
@@ -56,7 +56,7 @@ func AuthChecker(c *gin.Context) {
 
 	userCollectionsName := utils.EnvEntries["MONGO_USERS_DB"]
 	recordIndex := map[string]string{"username": claims["username"].(string)}
-	userRecord, userErr := mongodb.GetRecord(userCollectionsName, recordIndex)
+	userRecord, userErr := h.mongoDB.GetRecord(userCollectionsName, recordIndex)
 	if userErr != nil || userRecord == nil {
 		errorMsg := fmt.Sprintf("No User record found for: %v", claims["username"])
 		c.JSON(http.StatusUnauthorized, gin.H{"error": errorMsg})

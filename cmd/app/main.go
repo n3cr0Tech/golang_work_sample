@@ -27,13 +27,22 @@ func main() {
 	// mockData.CreateMockUsers()
 	utils.GetEnvEntries()
 	USERS_COLLECTIONS_NAME := utils.EnvEntries["MONGO_USERS_DB"]
-	mongodb.Init(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"], USERS_COLLECTIONS_NAME)
+
+	// Init MongoDB
+	mongoClient, err := mongodb.NewClient(utils.EnvEntries["MONGO_URL"], utils.EnvEntries["MONGO_USER"], utils.EnvEntries["MONGO_PWD"], utils.EnvEntries["DB_NAME"])
+	if err != nil {
+		log.Fatal(err)
+	}
+	mongoClient.CreateCollections(USERS_COLLECTIONS_NAME)
+
+	// Testing DB
 	collectionsName := "test"
 	testRecordName := "player-machine-4-lab"
-	testCreateDBData(collectionsName, testRecordName) //DEBUG
-	testGetDBData(collectionsName, testRecordName)    //DEBUG
-	testDeleteDBData(collectionsName, testRecordName) //DEBUG
+	testCreateDBData(mongoClient, collectionsName, testRecordName) //DEBUG
+	testGetDBData(mongoClient, collectionsName, testRecordName)    //DEBUG
+	testDeleteDBData(mongoClient, collectionsName, testRecordName) //DEBUG
 
+	// Init RabbitMQ
 	rabbitmq.Init(utils.GetRabbitMQURL())
 	log.Println("rabbitmq INIT done")
 	sendTestJSONMsg()
@@ -49,13 +58,17 @@ func main() {
 	defer socketio.SocketIOServer.Close()
 	//---------------
 
+	// Init handlers
+	authHandler := auth.NewAuthHandler(mongoClient)
+	mwHandler := middleware.NewMiddlewareHandler(mongoClient)
+
 	router.GET("/socket.io/*any", gin.WrapH(socketio.SocketIOServer))
 	router.POST("/socket.io/*any", gin.WrapH(socketio.SocketIOServer))
-	router.GET("/albums", middleware.AuthChecker, mockData.GetAlbums)
-	router.GET("/albums/:id", middleware.AuthChecker, mockData.GetAlbum)
+	router.GET("/albums", mwHandler.AuthChecker, mockData.GetAlbums)
+	router.GET("/albums/:id", mwHandler.AuthChecker, mockData.GetAlbum)
 	router.POST("/greeting", mockData.PostGreeting)
-	router.POST("/login", auth.Login)
-	router.POST("/register", auth.Register)
+	router.POST("/login", authHandler.Login)
+	router.POST("/register", authHandler.Register)
 
 	log.Println("API Server at localhost:8000")
 	if err := router.Run(":8000"); err != nil {
@@ -91,25 +104,25 @@ func sendTestJSONMsgB() {
 	rabbitmq.SendJSONMsg(payload, rabbitmq.CLIENT_QNAME)
 }
 
-func testGetDBData(collections string, recordName string) {
+func testGetDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {
 	data := map[string]interface{}{
 		"name": recordName,
 	}
-	mongodb.GetRecord(collections, data)
+	mongoClient.GetRecord(collections, data)
 }
 
-func testCreateDBData(collections string, recordName string) {
-	mongodb.CreateCollections(collections)
+func testCreateDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {
+	mongoClient.CreateCollections(collections)
 	filter := map[string]interface{}{"uuid": "abc-0"}
 	data := map[string]any{
 		"name":   recordName,
 		"points": 123,
 	}
-	mongodb.UpsertRecord(collections, filter, data)
+	mongoClient.UpsertRecord(collections, filter, data)
 }
 
-func testDeleteDBData(collections string, recordName string) {
-	mongodb.DeleteRecord(collections, "name", recordName)
+func testDeleteDBData(mongoClient *mongodb.MongoClient, collections string, recordName string) {
+	mongoClient.DeleteRecord(collections, "name", recordName)
 }
 
 func readConfigFile() {

@@ -15,7 +15,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Register(c *gin.Context) {
+type AuthHandler struct {
+	mongoDB *mongoDB.MongoClient
+}
+
+func NewAuthHandler(db *mongoDB.MongoClient) *AuthHandler {
+	return &AuthHandler{mongoDB: db}
+}
+
+func (h *AuthHandler) Register(c *gin.Context) {
 	var req types.Register
 
 	if err := c.BindJSON(&req); err != nil {
@@ -33,7 +41,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	res := createNewUserRecordOnDB(req.Username, hashedPwd)
+	res := h.createNewUserRecordOnDB(req.Username, hashedPwd)
 	if res {
 		c.IndentedJSON(http.StatusOK, gin.H{"message": "Created record for user: " + req.Username})
 	} else {
@@ -41,7 +49,7 @@ func Register(c *gin.Context) {
 	}
 }
 
-func Login(c *gin.Context) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var req types.Login
 	envEntries := utils.EnvEntries
 
@@ -50,7 +58,7 @@ func Login(c *gin.Context) {
 	}
 
 	recordIndex := map[string]string{"username": req.Username}
-	userRecord, _recordErr := mongoDB.GetRecord("users", recordIndex)
+	userRecord, _recordErr := h.mongoDB.GetRecord("users", recordIndex)
 	if _recordErr != nil {
 		fmt.Println("INSIDE - record error clause")
 		c.IndentedJSON(http.StatusOK, gin.H{"message": "Failed to find record for " + req.Username})
@@ -72,7 +80,7 @@ func Login(c *gin.Context) {
 	}
 }
 
-func createNewUserRecordOnDB(username string, hashedPwd string) bool {
+func (h *AuthHandler) createNewUserRecordOnDB(username string, hashedPwd string) bool {
 	id := uuid.New()
 	newUser := map[string]interface{}{
 		"UUID":      id.String(),
@@ -80,15 +88,9 @@ func createNewUserRecordOnDB(username string, hashedPwd string) bool {
 		"password":  hashedPwd,
 		"CreatedAt": time.Now(),
 	}
-	// var newUser types.User
-	// newUser.Username = username
-	// newUser.Password = hashedPwd
-	// newUser.ID = id.String()
-	// newUser.CreatedAt = time.Now()
 
 	filter := map[string]interface{}{"username": username}
-	return mongoDB.EnsureRegisterUser("users", filter, newUser)
-
+	return h.mongoDB.EnsureRegisterUser("users", filter, newUser)
 }
 
 func hashPassword(password string) (string, error) {
